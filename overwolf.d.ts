@@ -2213,6 +2213,33 @@ declare namespace overwolf.games {
     Launcher = 1,
   }
 
+  const enum GameInfoChangeReason {
+    Game = "game",
+    GameChanged = "gameChanged",
+    GameFocusChanged = "gameFocusChanged",
+    GameLaunched = "gameLaunched",
+    GameOverlayCoexistenceDetected = "gameOverlayCoexistenceDetected",
+    GameOverlayCursorVisibility = "gameOverlayCursorVisibility",
+    GameOverlayExlusiveModeChanged = "gameOverlayExlusiveModeChanged",
+    GameOverlayInputHookFailure = "gameOverlayInputHookFailure",
+    GameRendererDetected = "gameRendererDetected",
+    GameResolutionChanged = "gameResolutionChanged",
+    GameTerminated = "gameTerminated",
+    GameWindowDataChanged = "gameWindowDataChanged",
+  }
+
+  const enum KnownOverlayCoexistenceApps {
+    Asus = "asus",
+    Discord = "discord",
+    MSIAfterBurner = "MSIAfterBurner",
+    Nahimic = "nahimic",
+    Nahimic2 = "nahimic2",
+    None = "none",
+    ObsStudio = "obsStudio",
+    PlaysTV = "playsTV",
+    RazerSynapse = "razerSynapse",
+  }
+
   interface GameInfo {
     ActualDetectedRenderers: number;
     ActualGameRendererAllowsVideoCapture: boolean;
@@ -2381,6 +2408,7 @@ declare namespace overwolf.games {
     typeAsString: string;
     windowHandle: { value: number; };
     monitorHandle: { value: number; };
+    processId: number;
   }
 
   interface GameInfoUpdate {
@@ -2438,6 +2466,17 @@ declare namespace overwolf.games {
     typeAsString: string;
     windowHandle: { value: number; };
     monitorHandle: { value: number; };
+    processId: number;
+    overlayInfo: OverlayInfo;
+  }
+
+  interface OverlayInfo {
+    coexistingApps?: KnownOverlayCoexistenceApps[];
+    inputFailure?: boolean;
+    hadInGameRender?: boolean;
+    isCursorVisible?: boolean;
+    exclusiveModeDisabled?: boolean;
+    oopOverlay?: boolean;
   }
 
   interface GameInfoUpdatedEvent {
@@ -2448,6 +2487,7 @@ declare namespace overwolf.games {
     gameChanged: boolean;
     gameOverlayChanged: boolean;
     overlayInputHookError?: boolean;
+    reason?: GameInfoChangeReason;
   }
 
   interface MajorFrameRateChangeEvent {
@@ -2504,6 +2544,14 @@ declare namespace overwolf.games {
   function getRecentlyPlayedGames(
     maxNumOfGames: number,
     callback: CallbackFunction<GetRecentlyPlayedResult>
+  ): void;
+
+  /**
+   * Returns the last played gameinfo (when no game is currently running).
+   * @param callback Called with the result.
+   */
+  function getLastRunningGameInfo(
+    callback: CallbackFunction<GetGameInfoResult>
   ): void;
 
   /**
@@ -3838,7 +3886,7 @@ declare namespace overwolf.streaming {
    */
   interface StreamingVideoEncoderx264Settings {
     /**
-     * Defines the number of frames after which to send a keyframe.
+     * Defines which preset the encoder should use.
      */
     preset?: enums.StreamEncoderPreset_x264;
     /**
@@ -3846,7 +3894,7 @@ declare namespace overwolf.streaming {
      */
     rate_control?: enums.StreamEncoderRateControl_x264;
     /**
-     * Defines which preset the encoder should use.
+     * Defines the number of frames after which to send a keyframe.
      */
     keyframe_interval: number;
   }
@@ -3858,7 +3906,7 @@ declare namespace overwolf.streaming {
     /**
      * Defines which preset the encoder should use.
      */
-    preset?: enums.StreamEncoderRateControl_AMD_AMF;
+    preset?: enums.StreamEncoderPreset_AMD_AMF;
     /**
      * Defines the rate control mode the encoder should use.
      */
@@ -4052,6 +4100,10 @@ declare namespace overwolf.streaming {
     next_file: string;
   }
 
+  interface SupportedEncodersUpdatedEvent {
+    encoders?: EncoderData[];
+  }
+
   /**
    * Start a new stream.
    * @param settings The stream settings.
@@ -4239,7 +4291,13 @@ declare namespace overwolf.streaming {
    * Fired upon video file splited.
    */
   const onVideoFileSplited: Event<VideoFileSplitedEvent>;
+
+  /**
+   * Fired upon support encoder list updated.
+   */
+ const onSupportedEncodersUpdated: Event<SupportedEncodersUpdatedEvent>;
 }
+
 
 declare namespace overwolf.log {
   /**
@@ -4652,7 +4710,7 @@ declare namespace overwolf.extensions {
       filter: string;
     };
     /**
-     * If set to true, app local data will not be cleaned up after app uninstallation.
+     * If set to true, app localStorage data will not be cleaned up after app uninstallation.
      * Default value – “false”
      */
     disable_cleanup?: boolean;
